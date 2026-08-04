@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+__pypackages__/
+
+celerybeat.pid
+celerybeat-schedule.db
+
+.env
+.venv
+env/
+venv/
+
+.ruff_cache/
+.pypirc
+
+db.sqlite3
+.idea
+
+# Игнорировать все файлы в папке migrations
+**/migrations/*
+# Но не игнорировать __init__.py
+!**/migrations/__init__.py
+.DS_Store

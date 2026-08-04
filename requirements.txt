@@ -1,0 +1,4 @@
+packaging==26.2
+python-dotenv==1.2.2
+setuptools==83.0.0
+wheel==0.47.0
