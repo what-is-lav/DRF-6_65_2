@@ -1,7 +1,18 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from .models import ConfirmationCode
+
+User = get_user_model()  
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['birthdate'] = user.birthdate.strftime('%Y-%m-%d') if getattr(user, 'birthdate', None) else None
+        return token
 
 
 class UserBaseSerializer(serializers.Serializer):
@@ -14,12 +25,12 @@ class AuthValidateSerializer(UserBaseSerializer):
 
 
 class RegisterValidateSerializer(UserBaseSerializer):
+    birthdate = serializers.DateField(required=False, allow_null=True)
+
     def validate_email(self, email):
-        try:
-            User.objects.get(email=email)
-        except:
-            return email
-        raise ValidationError('User уже существует!')
+        if User.objects.filter(email=email).exists():
+            raise ValidationError('User уже существует!')
+        return email
 
 
 class ConfirmationSerializer(serializers.Serializer):

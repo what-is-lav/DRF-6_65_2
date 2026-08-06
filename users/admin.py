@@ -9,14 +9,13 @@ class CustomUserAdmin(UserAdmin):
     list_editable = ["is_active"]
     list_display_links = ["id", "email"]
 
-    # Страница редактирования существующего пользователя
     fieldsets = (
-        ("User_info", {"fields": ("email", "password")}),
-        ("Personal info", {"fields": ("is_active", "is_staff", "last_login")}),
+        ("Users_info", {"fields": ("email", "password")}),
+        ("Personal info", {"fields": ("birthdate", "is_active", "is_staff", "last_login")}),
     )
 
     add_fieldsets = (
-        (None, { "classes": ("wide",), "fields": ("email", "password1", "password2"),},),
+        (None, { "classes": ("wide",), "fields": ("email", "birthdate", "password1", "password2"),},),
     )
 
     ordering = ("email",)

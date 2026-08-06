@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from decimal import Decimal
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
@@ -42,7 +43,7 @@ class CategoryListCreateAPIView(ListCreateAPIView):
     permission_classes = [IsModerator | IsAuth | IsAnon]
 
     def post(self, request, *args, **kwargs):
-        serializer = CategoryValidateSerializer(data=request.data)
+        serializer = CategoryValidateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
         category = Category.objects.create(**serializer.validated_data)
@@ -58,7 +59,7 @@ class CategoryDetailAPIView(RetrieveUpdateDestroyAPIView):
 
     def put(self, request, *args, **kwargs):
         instance = self.get_object()
-        serializer = CategoryValidateSerializer(data=request.data)
+        serializer = CategoryValidateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
         instance.name = serializer.validated_data.get('name')
@@ -74,14 +75,21 @@ class ProductListCreateAPIView(ListCreateAPIView):
     permission_classes = [IsModerator | IsAuth | IsAnon]
 
     def post(self, request, *args, **kwargs):
-        serializer = ProductValidateSerializer(data=request.data)
+        serializer = ProductValidateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
+
         title = serializer.validated_data.get('title')
         description = serializer.validated_data.get('description')
-        price = serializer.validated_data.get('price')
+        price = Decimal(str(serializer.validated_data.get('price')))
         category = serializer.validated_data.get('category')
-        product = Product.objects.create(title=title, description=description, price=price,
-                                         category=category, owner=request.user)
+
+        product = Product.objects.create(
+            title=title, 
+            description=description, 
+            price=price,
+            category=category, 
+            owner=request.user
+        )
         return Response(data=ProductSerializer(product).data,
                         status=status.HTTP_201_CREATED)
 
@@ -94,11 +102,12 @@ class ProductDetailAPIView(RetrieveUpdateDestroyAPIView):
 
     def put(self, request, *args, **kwargs):
         product = self.get_object()
-        serializer = ProductValidateSerializer(data=request.data)
+        serializer = ProductValidateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
+
         product.title = serializer.validated_data.get('title')
         product.description = serializer.validated_data.get('description')
-        product.price = serializer.validated_data.get('price')
+        product.price = Decimal(str(serializer.validated_data.get('price')))
         product.category = serializer.validated_data.get('category')
         product.save()
 
@@ -113,8 +122,9 @@ class ReviewViewSet(ModelViewSet):
     permission_classes = [IsModerator | IsAuth | IsAnon]
 
     def create(self, request, *args, **kwargs):
-        serializer = ReviewValidateSerializer(data=request.data)
+        serializer = ReviewValidateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
+
         text = serializer.validated_data.get('text')
         stars = serializer.validated_data.get('stars')
         product = serializer.validated_data.get('product')
@@ -124,8 +134,9 @@ class ReviewViewSet(ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         review = self.get_object()
-        serializer = ReviewValidateSerializer(data=request.data)
+        serializer = ReviewValidateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
+
         review.text = serializer.validated_data.get('text')
         review.stars = serializer.validated_data.get('stars')
         review.product = serializer.validated_data.get('product')

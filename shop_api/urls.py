@@ -6,6 +6,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/products/', include('product.urls')),
     path('api/v1/users/', include('users.urls')),
+
+    path('accounts/', include('rest_framework.urls')),
 ]
 
 urlpatterns += swagger.urlpatterns

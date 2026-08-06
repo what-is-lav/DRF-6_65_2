@@ -1,26 +1,28 @@
-from django.db import transaction
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
-from rest_framework.authtoken.models import Token
-from rest_framework.generics import CreateAPIView
-
-from .serializers import (
-    RegisterValidateSerializer,
-    AuthValidateSerializer,
-    ConfirmationSerializer
-)
-from .models import ConfirmationCode, CustomUser
 import random
 import string
+from django.contrib.auth import authenticate, get_user_model
+from django.db import transaction
+from rest_framework import status
+from rest_framework.generics import CreateAPIView
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from .models import ConfirmationCode
+from .serializers import (
+    AuthValidateSerializer,
+    ConfirmationSerializer,
+    CustomTokenObtainPairSerializer,
+    RegisterValidateSerializer,
+)
+
+User = get_user_model()
 
 
-class AuthorizationAPIView(CreateAPIView):
-    serializer_class = AuthValidateSerializer
+class AuthorizationAPIView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         serializer = AuthValidateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -32,9 +34,12 @@ class AuthorizationAPIView(CreateAPIView):
                     status=status.HTTP_401_UNAUTHORIZED,
                     data={'error': 'User account is not activated yet!'}
                 )
-
-            token, _ = Token.objects.get_or_create(user=user)
-            return Response(data={'key': token.key})
+            
+            refresh = CustomTokenObtainPairSerializer.get_token(user)
+            return Response(data={
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            })
 
         return Response(
             status=status.HTTP_401_UNAUTHORIZED,
@@ -51,19 +56,32 @@ class RegistrationAPIView(CreateAPIView):
 
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
+        birthdate = serializer.validated_data.get('birthdate')
 
-        # Use transaction to ensure data consistency
         with transaction.atomic():
-            user = CustomUser.objects.create_user(
-                email=email,
-                password=password,
-                is_active=False
-            )
+            try:
+                # Пытаемся создать пользователя только с email и password (для кастомных моделей)
+                user = User.objects.create_user(
+                    email=email,
+                    password=password
+                )
+            except TypeError:
+                # Если модель требует обязательное поле username (например, стандартная модель),
+                # то дублируем email в поле username
+                user = User.objects.create_user(
+                    username=email,
+                    email=email,
+                    password=password
+                )
 
-            # Create a random 6-digit code
+            # Добавляем кастомные поля и сохраняем изменения
+            user.birthdate = birthdate
+            user.is_active = False
+            user.save()
+
             code = ''.join(random.choices(string.digits, k=6))
 
-            confirmation_code = ConfirmationCode.objects.create(
+            ConfirmationCode.objects.create(
                 user=user,
                 code=code
             )
@@ -80,7 +98,7 @@ class RegistrationAPIView(CreateAPIView):
 class ConfirmUserAPIView(CreateAPIView):
     serializer_class = ConfirmationSerializer
 
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         serializer = ConfirmationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -90,15 +108,14 @@ class ConfirmUserAPIView(CreateAPIView):
             user = User.objects.get(id=user_id)
             user.is_active = True
             user.save()
-
-            token, _ = Token.objects.get_or_create(user=user)
-
+            refresh = CustomTokenObtainPairSerializer.get_token(user)
             ConfirmationCode.objects.filter(user=user).delete()
 
         return Response(
             status=status.HTTP_200_OK,
             data={
                 'message': 'User аккаунт успешно активирован',
-                'key': token.key
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
             }
         )
