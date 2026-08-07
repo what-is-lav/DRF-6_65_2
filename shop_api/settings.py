@@ -65,10 +65,15 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
 }
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),   # Теперь токен действует 24 часа
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),   
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
+
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI')
 
 QUERYCOUNT = {
     'THRESHOLDS': {

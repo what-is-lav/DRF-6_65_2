@@ -1,8 +1,11 @@
 from django.urls import path
-from users.views import RegistrationAPIView, AuthorizationAPIView, ConfirmUserAPIView
+from .views import (AuthorizationAPIView,RegistrationAPIView,ConfirmUserAPIView, 
+                    GoogleLoginRedirectAPIView,GoogleCallbackAPIView,)
 
 urlpatterns = [
-    path('registration/', RegistrationAPIView.as_view()),
-    path('authorization/', AuthorizationAPIView.as_view()),
-    path('confirm/', ConfirmUserAPIView.as_view())
+    path('authorization/', AuthorizationAPIView.as_view(), name='authorization'),
+    path('registration/', RegistrationAPIView.as_view(), name='registration'),
+    path('confirm/', ConfirmUserAPIView.as_view(), name='confirm'),
+    path('google/login/', GoogleLoginRedirectAPIView.as_view(), name='google_login'),
+    path('google/callback/', GoogleCallbackAPIView.as_view(), name='google_callback'),
 ]
