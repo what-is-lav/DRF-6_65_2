@@ -3,6 +3,7 @@ import string
 import requests
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
+from django.core.cache import cache
 from django.db import transaction
 from django.shortcuts import redirect
 from django.utils import timezone
@@ -13,7 +14,6 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import ConfirmationCode
 from .serializers import (
     AuthValidateSerializer,
     ConfirmationSerializer,
@@ -80,12 +80,8 @@ class RegistrationAPIView(CreateAPIView):
             user.is_active = False
             user.save()
 
-            code = ''.join(random.choices(string.digits, k=6))
-
-            ConfirmationCode.objects.create(
-                user=user,
-                code=code
-            )
+        code = ''.join(random.choices(string.digits, k=6))
+        cache.set(f"confirm_code:{user.id}", code, timeout=300)
 
         return Response(
             status=status.HTTP_201_CREATED,
@@ -102,15 +98,29 @@ class ConfirmUserAPIView(CreateAPIView):
     def post(self, request, *args, **kwargs):
         serializer = ConfirmationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         user_id = serializer.validated_data['user_id']
+        input_code = serializer.validated_data.get('code')
+        key = f"confirm_code:{user_id}"
+        saved_code = cache.get(key)
+
+        if saved_code is None:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data={'error': 'Срок действия кода истек или код не найден.'}
+            )
+
+        if saved_code != str(input_code):
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data={'error': 'Неверный код подтверждения.'}
+            )
 
         with transaction.atomic():
             user = User.objects.get(id=user_id)
             user.is_active = True
             user.save()
             refresh = CustomTokenObtainPairSerializer.get_token(user)
-            ConfirmationCode.objects.filter(user=user).delete()
+        cache.delete(key)
 
         return Response(
             status=status.HTTP_200_OK,

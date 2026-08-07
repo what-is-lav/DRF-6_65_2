@@ -3,9 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import ConfirmationCode
-
-User = get_user_model()  
+User = get_user_model() 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -39,19 +37,8 @@ class ConfirmationSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         user_id = attrs.get('user_id')
-        code = attrs.get('code')
 
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
+        if not User.objects.filter(id=user_id).exists():
             raise ValidationError('User не существует!')
-
-        try:
-            confirmation_code = ConfirmationCode.objects.get(user=user)
-        except ConfirmationCode.DoesNotExist:
-            raise ValidationError('Код подтверждения не найден!')
-
-        if confirmation_code.code != code:
-            raise ValidationError('Неверный код подтверждения!')
 
         return attrs
