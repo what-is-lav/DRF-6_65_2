@@ -20,7 +20,6 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
     RegisterValidateSerializer,
 )
-from .tasks import send_welcome_email_task  # Импортируем нашу Celery-задачу
 
 User = get_user_model()
 
@@ -84,9 +83,6 @@ class RegistrationAPIView(CreateAPIView):
         code = ''.join(random.choices(string.digits, k=6))
         cache.set(f"confirm_code:{user.id}", code, timeout=300)
 
-        # Вызов Celery-задачи через .delay() для отправки письма с кодом/приветствием
-        send_welcome_email_task.delay(user_email=user.email, username=email)
-
         return Response(
             status=status.HTTP_201_CREATED,
             data={
@@ -124,7 +120,6 @@ class ConfirmUserAPIView(CreateAPIView):
             user.is_active = True
             user.save()
             refresh = CustomTokenObtainPairSerializer.get_token(user)
-        
         cache.delete(key)
 
         return Response(
